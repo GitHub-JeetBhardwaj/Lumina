@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina | Low Light Enhancement</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* --- Updated Color Theme --- */
+            --bg-near-black: #0A0A0A;
+            --ui-dark-gray: #181818;
+            
+            --accent-lime-green: #A3FF12;
+            --accent-magenta: #FF2DAA; /* Alternative, but using lime green as primary */
+            
+            --text-white: #FFFFFF;
+            --text-gray: #AAAAAA;
+            
+            --border-color: #222222;
+        }
+
+        * { box-sizing: border-box; transition: all 0.3s ease; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-near-black);
+            color: var(--text-white);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+            position: relative;
+        }
+
+        /* --- Background Effects: Subtle starry night to let images shine --- */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 100%);
+            opacity: 0.3;
+            z-index: -1;
+            animation: twinkle 10s infinite ease-in-out;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(2px 2px at 50px 200px, #FFFFFF, transparent),
+                radial-gradient(2px 2px at 200px 50px, #FFFFFF, transparent),
+                radial-gradient(3px 3px at 300px 300px, #FFFFFF, transparent),
+                radial-gradient(1px 1px at 100px 100px, #FFFFFF, transparent),
+                radial-gradient(2px 2px at 400px 150px, #FFFFFF, transparent),
+                radial-gradient(1px 1px at 250px 400px, #FFFFFF, transparent);
+            background-size: 500px 500px;
+            opacity: 0.05;
+            z-index: -1;
+            animation: subtleMove 20s infinite linear;
+        }
+
+        /* --- Header & Branding --- */
+        header {
+            margin-top: 50px;
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 1s ease-out;
+            z-index: 1;
+        }
+        
+        h1 {
+            font-family: 'Playfair Display', serif; /* Classic Serif Font */
+            font-size: 3rem;
+            margin: 0;
+            background: linear-gradient(135deg, var(--accent-lime-green), var(--accent-magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            color: var(--text-gray);
+            font-size: 0.85rem;
+            margin-top: 8px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* --- Main Container --- */
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            background: var(--ui-dark-gray);
+            border: 1px solid var(--border-color);
+            border-radius: 8px; /* Slightly rounded for modern feel */
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            animation: fadeIn 1.5s ease-out;
+            z-index: 1;
+        }
+
+        /* --- Navigation Tabs --- */
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 50px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: var(--text-gray);
+            padding-bottom: 15px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid transparent;
+            position: relative;
+        }
+
+        .nav a.active {
+            color: var(--accent-lime-green);
+            border-bottom: 2px solid var(--accent-lime-green);
+        }
+
+        .nav a:hover:not(.active) {
+            color: var(--text-white);
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent-lime-green);
+            transition: width 0.3s ease;
+        }
+
+        .nav a:hover::after {
+            width: 100%;
+        }
+
+        /* --- Upload Section --- */
+        .upload-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            animation: fadeInUp 1s ease-out 0.5s backwards;
+        }
+
+        .upload-area {
+            width: 100%;
+            border: 1px dashed var(--text-gray);
+            background: rgba(255,255,255,0.02);
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-lime-green);
+            background: rgba(163, 255, 18, 0.05);
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(163, 255, 18, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .upload-area:hover::before {
+            left: 100%;
+        }
+
+        input[type="file"] { display: none; }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: var(--accent-lime-green);
+            margin-bottom: 20px;
+            opacity: 0.8;
+            animation: pulse 2s infinite;
+        }
+
+        /* --- Buttons --- */
+        .btn-process {
+            background: var(--accent-lime-green);
+            color: var(--bg-near-black);
+            padding: 14px 50px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(163, 255, 18, 0.2);
+            margin-top: 10px;
+            min-width: 200px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-process:hover {
+            background: #8DE010;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(163, 255, 18, 0.3);
+            color: var(--text-white);
+        }
+
+        .btn-process::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2), transparent);
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .btn-process:hover::after {
+            opacity: 1;
+            transform: scale(1.5);
+        }
+
+        /* --- Comparison Grid --- */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 50px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 50px;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: opacity 1s ease-out, transform 1s ease-out;
+        }
+
+        .comparison-grid.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid { grid-template-columns: 1fr; }
+        }
+
+        .img-card {
+            background: #101010;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease;
+        }
+
+        .img-card:hover {
+            transform: scale(1.02);
+        }
+
+        .img-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .img-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border: 1px solid #151515;
+            border-radius: 4px;
+        }
+
+        /* --- Download Button --- */
+        .download-btn {
+            margin-top: 20px;
+            background: transparent;
+            border: 1px solid var(--accent-lime-green);
+            color: var(--accent-lime-green);
+            padding: 10px 25px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .download-btn:hover {
+            background: var(--accent-lime-green);
+            color: var(--bg-near-black);
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(163, 255, 18, 0.3);
+        }
+
+        /* --- Video Section --- */
+        .video-wrapper {
+            text-align: center;
+            position: relative;
+            animation: fadeInUp 1s ease-out 0.5s backwards;
+        }
+
+        .video-frame {
+            border: 5px solid #101010;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            max-width: 100%;
+            border-radius: 8px;
+        }
+
+        .live-tag {
+            color: var(--accent-lime-green);
+            font-size: 0.8rem;
+            margin-bottom: 15px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            display: block;
+            animation: blink 1.5s infinite;
+        }
+
+        /* --- Footer --- */
+        footer {
+            margin-top: auto;
+            padding: 40px;
+            color: var(--text-gray);
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.6;
+            animation: fadeInUp 1s ease-out 1s backwards;
+            z-index: 1;
+        }
+
+        /* --- Keyframe Animations --- */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.1; }
+            100% { opacity: 0.3; }
+        }
+
+        @keyframes subtleMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 50px 50px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Lumina</h1>
+        <div class="subtitle">Classic Low Light Enhancement</div>
+    </header>
+
+    <div class="container">
+        
+        <div class="nav">
+            <a href="{{ url_for('index') }}" class="{{ 'active' if mode == 'image' else '' }}">
+                Upload
+            </a>
+            <a href="{{ url_for('live_video') }}" class="{{ 'active' if mode == 'video' else '' }}">
+                Live Feed
+            </a>
+        </div>
+
+        {% if mode == 'image' %}
+            <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                
+                <div class="upload-wrapper">
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <input type="file" name="file" id="fileInput" accept="image/*" required onchange="showFileName()">
+                        <div class="upload-icon"><i class="far fa-images"></i></div>
+                        <p id="fileNameText" style="color: var(--text-gray); margin: 0; font-weight: 300;">
+                            Select or Drop Image Here
+                        </p>
+                    </div>
+
+                    <button type="submit" class="btn-process">Process Image</button>
+                </div>
+
+            </form>
+
+            {% if original_img and enhanced_img %}
+            <div id="comparisonSection" class="comparison-grid">
+                <div class="img-card">
+                    <h3>Reference</h3>
+                    <img src="data:image/jpeg;base64,{{ original_img }}" alt="Original">
+                </div>
+                
+                <div class="img-card" style="border-color: var(--accent-lime-green);">
+                    <h3 style="color: var(--accent-lime-green);">Enhanced</h3>
+                    <img id="enhancedImage" src="data:image/jpeg;base64,{{ enhanced_img }}" alt="Enhanced">
+                    
+                    <a href="#" onclick="downloadImage()" class="download-btn">
+                        Download Result <i class="fas fa-arrow-down"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+
+        {% if mode == 'video' %}
+            <div class="video-wrapper">
+                <span class="live-tag"><i class="fas fa-circle" style="font-size: 8px; vertical-align: middle;"></i> Live Signal Processing</span>
+                <img src="{{ url_for('video_feed') }}" class="video-frame" alt="Live Video Feed">
+                <p style="margin-top: 20px; font-size: 0.8rem; color: var(--text-gray);">
+                    System optimizing for hardware capabilities...
+                </p>
+            </div>
+        {% endif %}
+
+    </div>
+
+    <footer>
+        Designed & Developed by Jeet Bhardwaj
+    </footer>
+
+    <script>
+        function showFileName() {
+            const input = document.getElementById('fileInput');
+            const text = document.getElementById('fileNameText');
+            if(input.files && input.files[0]) {
+                text.innerText = input.files[0].name;
+                text.style.color = "var(--accent-lime-green)";
+                text.style.fontWeight = "600";
+            }
+        }
+
+        function downloadImage() {
+            const img = document.getElementById('enhancedImage');
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'Lumina_Classic_' + new Date().getTime() + '.jpg';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Auto-scroll to comparison after processing
+        document.addEventListener('DOMContentLoaded', function() {
+            const comparison = document.getElementById('comparisonSection');
+            if (comparison) {
+                comparison.classList.add('visible');
+                comparison.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    </script>
+</body>
+</html>
