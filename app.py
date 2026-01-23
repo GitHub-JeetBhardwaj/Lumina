@@ -1,16 +1,17 @@
 import os
 import io
 import base64
-import cv2  # NEW: OpenCV for video handling
+import cv2
 import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 from PIL import Image
-from flask import Flask, render_template, request, flash, redirect, Response, url_for
+from flask import Flask, render_template, request, flash, redirect, jsonify
 
 # ==================== MODEL ARCHITECTURE ====================
-# (Kept exactly as provided)
+# (KEEP ALL YOUR EXISTING MODEL CLASSES HERE: ResidualBlock, SwinIRDenoiser, etc.)
+# ... [Paste your classes here exactly as before] ...
 
 class ResidualBlock(nn.Module):
     def __init__(self, channels):
@@ -196,7 +197,7 @@ except Exception as e:
 
 # 2. IMAGE PREPROCESSING HELPERS
 transform_model = transforms.Compose([
-    transforms.Resize((256, 256)),
+    transforms.Resize((256, 256)), # Kept small for speed
     transforms.ToTensor()
 ])
 
@@ -219,79 +220,36 @@ def run_inference(pil_img):
     output_pil = output_pil.resize(original_size, Image.Resampling.BICUBIC)
     return output_pil
 
-def process_image_bytes(image_bytes):
-    """Helper for Image Upload Route"""
-    img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-    enhanced_pil = run_inference(img)
-    return img, enhanced_pil
-
 def to_base64(pil_img):
     img_io = io.BytesIO()
-    pil_img.save(img_io, 'JPEG', quality=95)
+    pil_img.save(img_io, 'JPEG', quality=85) # Reduced quality slightly for speed
     return base64.b64encode(img_io.getvalue()).decode('utf-8')
 
-# 3. VIDEO GENERATOR
-def gen_frames():
-    """Generates frames from webcam, enhances them, and yields MJPEG stream"""
-    camera = cv2.VideoCapture(0)  # Use 0 for default webcam
-    
-    if not camera.isOpened():
-        print("Error: Could not open webcam.")
-        return
-
-    while True:
-        success, frame = camera.read()
-        if not success:
-            break
-        
-        # 1. Convert OpenCV BGR to PIL RGB
-        cv2_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(cv2_rgb)
-
-        # 2. Run Inference (This is the slow part!)
-        # Optimization tip: You might want to skip frames or resize smaller if laggy
-        try:
-            enhanced_pil = run_inference(pil_img)
-        except Exception as e:
-            print(f"Inference error: {e}")
-            enhanced_pil = pil_img # Fallback to original
-
-        # 3. Convert PIL Enhanced back to OpenCV BGR
-        enhanced_np = np.array(enhanced_pil)
-        enhanced_bgr = cv2.cvtColor(enhanced_np, cv2.COLOR_RGB2BGR)
-
-        # 4. Encode frame as JPEG
-        ret, buffer = cv2.imencode('.jpg', enhanced_bgr)
-        frame_bytes = buffer.tobytes()
-
-        # 5. Yield frame in MJPEG format
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-    
-    camera.release()
-
-# 4. ROUTES
+# 3. ROUTES
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html', mode='image')
+    # If using Query Params to switch modes
+    mode = request.args.get('mode', 'image')
+    return render_template('index.html', mode=mode)
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
     if 'file' not in request.files:
         flash('No file part')
-        return redirect(url_for('index'))
+        return redirect(url_for('index', mode='image'))
     
     file = request.files['file']
     if file.filename == '':
         flash('No selected file')
-        return redirect(url_for('index'))
+        return redirect(url_for('index', mode='image'))
         
     if file:
         try:
             img_bytes = file.read()
-            original_pil, enhanced_pil = process_image_bytes(img_bytes)
+            img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+            enhanced_pil = run_inference(img)
             
-            original_b64 = to_base64(original_pil)
+            original_b64 = to_base64(img)
             enhanced_b64 = to_base64(enhanced_pil)
             
             return render_template('index.html', 
@@ -302,16 +260,37 @@ def upload_image():
                                    
         except Exception as e:
             flash(f'Error processing image: {str(e)}')
-            return redirect(url_for('index'))
-    return redirect(url_for('index'))
-
-@app.route('/video_feed')
-def video_feed():
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+            return redirect(url_for('index', mode='image'))
+    return redirect(url_for('index', mode='image'))
 
 @app.route('/live_video')
 def live_video():
     return render_template('index.html', mode='video')
+
+# NEW ROUTE: Processes frames sent via AJAX/JS
+@app.route('/process_frame', methods=['POST'])
+def process_frame():
+    try:
+        data = request.json
+        image_data = data['image']
+        
+        # Decode base64 image
+        image_data = image_data.split(',')[1]
+        image_bytes = base64.b64decode(image_data)
+        
+        # Open Image
+        img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        
+        # Run Inference
+        enhanced_pil = run_inference(img)
+        
+        # Return Enhanced Base64
+        enhanced_b64 = to_base64(enhanced_pil)
+        return jsonify({'status': 'success', 'image': 'data:image/jpeg;base64,' + enhanced_b64})
+
+    except Exception as e:
+        print(f"Frame error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=7860)
