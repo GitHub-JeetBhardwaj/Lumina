@@ -3,229 +3,44 @@ import io
 import base64
 import cv2
 import numpy as np
-import torch
-import torch.nn as nn
-import torchvision.transforms as transforms
 from PIL import Image
-from flask import Flask, render_template, request, flash, redirect, jsonify
-
-# ==================== MODEL ARCHITECTURE ====================
-# (KEEP ALL YOUR EXISTING MODEL CLASSES HERE: ResidualBlock, SwinIRDenoiser, etc.)
-# ... [Paste your classes here exactly as before] ...
-
-class ResidualBlock(nn.Module):
-    def __init__(self, channels):
-        super().__init__()
-        self.conv1 = nn.Conv2d(channels, channels, 3, 1, 1)
-        self.bn1 = nn.BatchNorm2d(channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1)
-        self.bn2 = nn.BatchNorm2d(channels)
-    
-    def forward(self, x):
-        residual = x
-        out = self.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        out += residual
-        out = self.relu(out)
-        return out
-
-class ChannelAttention(nn.Module):
-    def __init__(self, channels, reduction=16):
-        super().__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Conv2d(channels, channels // reduction, 1, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(channels // reduction, channels, 1, bias=False)
-        )
-        self.sigmoid = nn.Sigmoid()
-    
-    def forward(self, x):
-        avg_out = self.fc(self.avg_pool(x))
-        max_out = self.fc(self.max_pool(x))
-        out = self.sigmoid(avg_out + max_out)
-        return x * out
-
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
-        super().__init__()
-        self.conv = nn.Conv2d(2, 1, kernel_size, padding=kernel_size//2, bias=False)
-        self.sigmoid = nn.Sigmoid()
-    
-    def forward(self, x):
-        avg_out = torch.mean(x, dim=1, keepdim=True)
-        max_out, _ = torch.max(x, dim=1, keepdim=True)
-        out = torch.cat([avg_out, max_out], dim=1)
-        out = self.sigmoid(self.conv(out))
-        return x * out
-
-class SwinIRDenoiser(nn.Module):
-    def __init__(self, in_channels=3, embed_dim=64, num_blocks=8):
-        super().__init__()
-        self.conv_first = nn.Conv2d(in_channels, embed_dim, 3, 1, 1)
-        self.res_blocks = nn.ModuleList([ResidualBlock(embed_dim) for _ in range(num_blocks)])
-        self.channel_attn = ChannelAttention(embed_dim)
-        self.spatial_attn = SpatialAttention()
-        self.conv_last = nn.Conv2d(embed_dim, in_channels, 3, 1, 1)
-    
-    def forward(self, x):
-        x = self.conv_first(x)
-        for block in self.res_blocks:
-            x = block(x)
-        x = self.channel_attn(x)
-        x = self.spatial_attn(x)
-        x = self.conv_last(x)
-        return x
-
-class AttentionGate(nn.Module):
-    def __init__(self, F_g, F_l, F_int):
-        super().__init__()
-        self.W_g = nn.Sequential(nn.Conv2d(F_g, F_int, 1, 1, 0, bias=True), nn.BatchNorm2d(F_int))
-        self.W_x = nn.Sequential(nn.Conv2d(F_l, F_int, 1, 1, 0, bias=True), nn.BatchNorm2d(F_int))
-        self.psi = nn.Sequential(nn.Conv2d(F_int, 1, 1, 1, 0, bias=True), nn.BatchNorm2d(1), nn.Sigmoid())
-        self.relu = nn.ReLU(inplace=True)
-    
-    def forward(self, g, x):
-        g1 = self.W_g(g)
-        x1 = self.W_x(x)
-        psi = self.relu(g1 + x1)
-        psi = self.psi(psi)
-        return x * psi
-
-class AttentionUNet(nn.Module):
-    def __init__(self, in_channels=3, out_channels=3):
-        super().__init__()
-        self.enc1 = self.conv_block(in_channels, 64)
-        self.pool1 = nn.MaxPool2d(2)
-        self.enc2 = self.conv_block(64, 128)
-        self.pool2 = nn.MaxPool2d(2)
-        self.enc3 = self.conv_block(128, 256)
-        self.pool3 = nn.MaxPool2d(2)
-        self.enc4 = self.conv_block(256, 512)
-        self.pool4 = nn.MaxPool2d(2)
-        self.bottleneck = self.conv_block(512, 1024)
-        
-        self.up4 = nn.ConvTranspose2d(1024, 512, 2, 2)
-        self.att4 = AttentionGate(512, 512, 256)
-        self.dec4 = self.conv_block(1024, 512)
-        
-        self.up3 = nn.ConvTranspose2d(512, 256, 2, 2)
-        self.att3 = AttentionGate(256, 256, 128)
-        self.dec3 = self.conv_block(512, 256)
-        
-        self.up2 = nn.ConvTranspose2d(256, 128, 2, 2)
-        self.att2 = AttentionGate(128, 128, 64)
-        self.dec2 = self.conv_block(256, 128)
-        
-        self.up1 = nn.ConvTranspose2d(128, 64, 2, 2)
-        self.att1 = AttentionGate(64, 64, 32)
-        self.dec1 = self.conv_block(128, 64)
-        
-        self.out = nn.Conv2d(64, out_channels, 1)
-    
-    def conv_block(self, in_ch, out_ch):
-        return nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, 1, 1), nn.BatchNorm2d(out_ch), nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, 3, 1, 1), nn.BatchNorm2d(out_ch), nn.ReLU(inplace=True)
-        )
-    
-    def forward(self, x):
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool1(e1))
-        e3 = self.enc3(self.pool2(e2))
-        e4 = self.enc4(self.pool3(e3))
-        b = self.bottleneck(self.pool4(e4))
-        
-        d4 = self.up4(b)
-        e4 = self.att4(d4, e4)
-        d4 = torch.cat([e4, d4], dim=1)
-        d4 = self.dec4(d4)
-        
-        d3 = self.up3(d4)
-        e3 = self.att3(d3, e3)
-        d3 = torch.cat([e3, d3], dim=1)
-        d3 = self.dec3(d3)
-        
-        d2 = self.up2(d3)
-        e2 = self.att2(d2, e2)
-        d2 = torch.cat([e2, d2], dim=1)
-        d2 = self.dec2(d2)
-        
-        d1 = self.up1(d2)
-        e1 = self.att1(d1, e1)
-        d1 = torch.cat([e1, d1], dim=1)
-        d1 = self.dec1(d1)
-        return self.out(d1)
-
-class HybridLowLightEnhancer(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.swinir = SwinIRDenoiser()
-        self.unet = AttentionUNet()
-    
-    def forward(self, x):
-        x = self.swinir(x) + x
-        x = self.unet(x)
-        return torch.clamp(x, 0, 1)
+from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
 
 # ==================== FLASK APP SETUP ====================
 
 app = Flask(__name__)
 app.secret_key = "secret_key_for_flash_messages"
 
-# 1. SETUP DEVICE & MODEL
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"🚀 Server starting. Using device: {device}")
+# ==================== IMAGE ENHANCEMENT LOGIC ====================
 
-model = HybridLowLightEnhancer()
-model_path = 'lol-datasetmodel.pth' 
-
-try:
-    if os.path.exists(model_path):
-        state_dict = torch.load(model_path, map_location=device)
-        model.load_state_dict(state_dict)
-        model.to(device)
-        model.eval()
-        print("✅ Model loaded successfully.")
-    else:
-        print(f"⚠️ WARNING: Model file '{model_path}' not found. Using random weights.")
-        model.to(device)
-except Exception as e:
-    print(f"❌ Error loading model: {e}")
-
-# 2. IMAGE PREPROCESSING HELPERS
-transform_model = transforms.Compose([
-    transforms.Resize((256, 256)), # Kept small for speed
-    transforms.ToTensor()
-])
-
-def run_inference(pil_img):
-    """Core function to run model on a PIL image"""
-    original_size = pil_img.size
+def enhance_image(image):
+    """
+    Replaces the deep learning model.
+    Uses OpenCV to equalize the histogram of the Y (luminance) channel.
+    """
+    # Convert PIL Image to a NumPy array
+    img = np.array(image)
     
-    # Preprocess
-    input_tensor = transform_model(pil_img).unsqueeze(0).to(device)
+    # Convert the image to YUV color space
+    yuv_img = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
     
-    # Inference
-    with torch.no_grad():
-        output_tensor = model(input_tensor)
+    # Equalize the histogram of the Y channel (luminance)
+    yuv_img[:, :, 0] = cv2.equalizeHist(yuv_img[:, :, 0])
     
-    # Post-process
-    output_tensor = output_tensor.squeeze(0).cpu()
-    output_pil = transforms.ToPILImage()(output_tensor)
+    # Convert the YUV image back to RGB format
+    enhanced_img = cv2.cvtColor(yuv_img, cv2.COLOR_YUV2RGB)
     
-    # Resize back
-    output_pil = output_pil.resize(original_size, Image.Resampling.BICUBIC)
-    return output_pil
+    # Convert back to PIL Image so it works with the rest of the Flask app
+    return Image.fromarray(enhanced_img)
 
 def to_base64(pil_img):
+    """Helper to convert PIL Image to base64 string for HTML rendering."""
     img_io = io.BytesIO()
-    pil_img.save(img_io, 'JPEG', quality=85) # Reduced quality slightly for speed
+    pil_img.save(img_io, 'JPEG', quality=85)
     return base64.b64encode(img_io.getvalue()).decode('utf-8')
 
-# 3. ROUTES
+# ==================== ROUTES ====================
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     # If using Query Params to switch modes
@@ -247,7 +62,9 @@ def upload_image():
         try:
             img_bytes = file.read()
             img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-            enhanced_pil = run_inference(img)
+            
+            # Use OpenCV logic instead of the PyTorch inference
+            enhanced_pil = enhance_image(img)
             
             original_b64 = to_base64(img)
             enhanced_b64 = to_base64(enhanced_pil)
@@ -261,13 +78,14 @@ def upload_image():
         except Exception as e:
             flash(f'Error processing image: {str(e)}')
             return redirect(url_for('index', mode='image'))
+            
     return redirect(url_for('index', mode='image'))
 
 @app.route('/live_video')
 def live_video():
     return render_template('index.html', mode='video')
 
-# NEW ROUTE: Processes frames sent via AJAX/JS
+# Processes frames sent via AJAX/JS
 @app.route('/process_frame', methods=['POST'])
 def process_frame():
     try:
@@ -281,8 +99,8 @@ def process_frame():
         # Open Image
         img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         
-        # Run Inference
-        enhanced_pil = run_inference(img)
+        # Enhance using OpenCV logic
+        enhanced_pil = enhance_image(img)
         
         # Return Enhanced Base64
         enhanced_b64 = to_base64(enhanced_pil)
@@ -293,4 +111,5 @@ def process_frame():
         return jsonify({'status': 'error', 'message': str(e)})
 
 if __name__ == '__main__':
+    print("🚀 Server starting with OpenCV Enhancement Logic.")
     app.run(host='0.0.0.0', port=7860)
