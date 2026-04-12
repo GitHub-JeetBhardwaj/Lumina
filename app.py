@@ -1,6 +1,8 @@
 import os
 import io
 import base64
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -88,7 +90,7 @@ class Generator(nn.Module):
 # ==================== MODEL INITIALIZATION ====================
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL_PATH = "gen_epoch_50.pth" # Ensure this path points to your weights file
+MODEL_PATH = "gen_epoch_50.pth" # Ensure this path is correct
 IMAGE_SIZE = 256
 
 print(f"Loading model from {MODEL_PATH} onto {DEVICE}...")
@@ -100,39 +102,42 @@ try:
     generator.eval()
     print("✅ Model loaded successfully!")
 except Exception as e:
-    print(f"❌ Error loading model: {e}")
+    print(f"❌ Error loading model: {e}. PyTorch DL logic will fail.")
 
 # Inference Transforms
 preprocess = transforms.Compose([
     transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-    transforms.ToTensor(), # Scales to [0, 1]
+    transforms.ToTensor(),
 ])
 to_pil = transforms.ToPILImage()
 
-# ==================== IMAGE ENHANCEMENT LOGIC ====================
+# ==================== ENHANCEMENT LOGIC ====================
 
-def enhance_image(image):
-    """
-    Passes the input image through the trained PyTorch Generator.
-    """
-    # 1. Store original size to resize the output back to native resolution
+def enhance_image_dl(image):
+    """Deep Learning Method: Passes input image through trained PyTorch Generator."""
     original_size = image.size 
-
-    # 2. Preprocess: Resize to 256x256, convert to Tensor, add batch dimension
     input_tensor = preprocess(image).unsqueeze(0).to(DEVICE)
 
-    # 3. Inference
     with torch.no_grad():
         output_tensor = generator(input_tensor)
 
-    # 4. Postprocess: Remove batch dimension, move to CPU, convert to PIL
     output_tensor = output_tensor.squeeze(0).cpu()
     enhanced_pil = to_pil(output_tensor)
-
-    # 5. Resize back to original dimensions for the frontend
+    
+    # Resize back to original dimensions
     enhanced_pil = enhanced_pil.resize(original_size, Image.Resampling.LANCZOS)
-
     return enhanced_pil
+
+def enhance_image_cv2(image):
+    """Traditional Method: Uses OpenCV to equalize the histogram of the Y (luminance) channel."""
+    img = np.array(image)
+    yuv_img = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
+    
+    # Equalize the histogram of the Y channel (luminance)
+    yuv_img[:, :, 0] = cv2.equalizeHist(yuv_img[:, :, 0])
+    
+    enhanced_img = cv2.cvtColor(yuv_img, cv2.COLOR_YUV2RGB)
+    return Image.fromarray(enhanced_img)
 
 def to_base64(pil_img):
     """Helper to convert PIL Image to base64 string for HTML rendering."""
@@ -144,7 +149,6 @@ def to_base64(pil_img):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    # If using Query Params to switch modes
     mode = request.args.get('mode', 'image')
     return render_template('index.html', mode=mode)
 
@@ -164,16 +168,20 @@ def upload_image():
             img_bytes = file.read()
             img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
             
-            # Use PyTorch logic
-            enhanced_pil = enhance_image(img)
+            # Run BOTH logic pathways
+            cv2_enhanced_pil = enhance_image_cv2(img)
+            dl_enhanced_pil = enhance_image_dl(img)
             
+            # Convert to base64
             original_b64 = to_base64(img)
-            enhanced_b64 = to_base64(enhanced_pil)
+            cv2_b64 = to_base64(cv2_enhanced_pil)
+            dl_b64 = to_base64(dl_enhanced_pil)
             
             return render_template('index.html', 
                                    mode='image',
                                    original_img=original_b64, 
-                                   enhanced_img=enhanced_b64,
+                                   cv2_img=cv2_b64,       # Passed to Jinja template
+                                   dl_img=dl_b64,         # Passed to Jinja template
                                    filename=file.filename)
                                    
         except Exception as e:
@@ -196,21 +204,26 @@ def process_frame():
         # Decode base64 image
         image_data = image_data.split(',')[1]
         image_bytes = base64.b64decode(image_data)
-        
-        # Open Image
         img = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         
-        # Enhance using PyTorch logic
-        enhanced_pil = enhance_image(img)
+        # Enhance using BOTH methods
+        cv2_enhanced_pil = enhance_image_cv2(img)
+        dl_enhanced_pil = enhance_image_dl(img)
         
-        # Return Enhanced Base64
-        enhanced_b64 = to_base64(enhanced_pil)
-        return jsonify({'status': 'success', 'image': 'data:image/jpeg;base64,' + enhanced_b64})
+        # Return Both Enhanced Base64s
+        cv2_b64 = to_base64(cv2_enhanced_pil)
+        dl_b64 = to_base64(dl_enhanced_pil)
+        
+        return jsonify({
+            'status': 'success', 
+            'cv2_image': 'data:image/jpeg;base64,' + cv2_b64,
+            'dl_image': 'data:image/jpeg;base64,' + dl_b64
+        })
 
     except Exception as e:
         print(f"Frame error: {e}")
         return jsonify({'status': 'error', 'message': str(e)})
 
 if __name__ == '__main__':
-    print("🚀 Server starting with Deep Learning Enhancement Logic.")
+    print("🚀 Server starting with BOTH OpenCV & PyTorch DL Logic...")
     app.run(host='0.0.0.0', port=7860)
