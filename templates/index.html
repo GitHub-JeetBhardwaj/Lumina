@@ -3,120 +3,302 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumina | Dual-Engine Low Light Enhancement</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>Lumina | Computational Optics</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
+        /* =========================================================
+           PREMIUM EDITORIAL / ARCHITECTURAL COLOR & LAYER SYSTEM
+           ========================================================= */
         :root {
-            --bg-near-black: #0A0A0A;
-            --ui-dark-gray: #181818;
-            --accent-lime-green: #A3FF12; /* Deep Learning Accent */
-            --accent-blue: #4DA8DA;       /* OpenCV Accent */
-            --text-white: #FFFFFF;
-            --text-gray: #AAAAAA;
-            --border-color: #222222;
+            --background: #FCFCFC;    
+            --surface: #F5F4F3;       /* Softer surface for layering */
+            --glass-bg: rgba(252, 252, 252, 0.75);
+            --gray-1: #D8D5D4;        
+            --gray-2: #ACA8A8;        
+            --gray-3: #4F4744;        
+            --text: #1A1919;          
+            --accent-red: #B3262D;    
+            --accent-gold: #D8B64A;   
+            
+            --border-thin: 1px solid var(--gray-1);
+            --shadow-float: 0 30px 60px rgba(0,0,0,0.03), 0 10px 20px rgba(0,0,0,0.02);
+            --shadow-hover: 0 40px 80px rgba(0,0,0,0.06), 0 15px 30px rgba(0,0,0,0.04);
         }
 
-        * { box-sizing: border-box; transition: all 0.3s ease; }
+        * { box-sizing: border-box; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
         
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg-near-black);
-            color: var(--text-white);
+            background-color: var(--background);
+            color: var(--text);
             margin: 0;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
             overflow-x: hidden;
+            position: relative;
         }
+
+        /* --- SUBTLE FILM GRAIN (Premium Texture) --- */
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.03"/></svg>');
+            pointer-events: none; z-index: 9999;
+        }
+
+        /* --- 3D ISOMETRIC FLOOR GRID --- */
+        .grid-floor {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-image: 
+                linear-gradient(var(--gray-1) 1px, transparent 1px), 
+                linear-gradient(90deg, var(--gray-1) 1px, transparent 1px);
+            background-size: 60px 60px;
+            transform: perspective(1200px) rotateX(75deg) translateY(-150px) translateZ(-300px);
+            opacity: 0.15;
+            z-index: -3;
+            pointer-events: none;
+        }
+
+        /* --- 3D GYROSCOPIC ENGINE (CSS ONLY) --- */
+        .scene-3d {
+            position: fixed; top: 15%; right: 5%;
+            width: 500px; height: 500px;
+            perspective: 1200px;
+            z-index: -2;
+            pointer-events: none;
+        }
+        .gyro-wrapper {
+            width: 100%; height: 100%;
+            transform-style: preserve-3d;
+            animation: globalRotate 40s infinite linear;
+        }
+        .gyro-ring {
+            position: absolute; top: 10%; left: 10%; width: 80%; height: 80%;
+            border: 1px solid var(--gray-2); border-radius: 50%;
+            transform-style: preserve-3d;
+        }
+        .ring-x { transform: rotateX(70deg) rotateY(0deg); border-style: dashed; }
+        .ring-y { transform: rotateX(70deg) rotateY(60deg); border-color: var(--accent-gold); opacity: 0.3; }
+        .ring-z { transform: rotateX(70deg) rotateY(120deg); }
+        
+        .core-light {
+            position: absolute; top: 48%; left: 48%; width: 4%; height: 4%;
+            background: var(--accent-red);
+            border-radius: 50%;
+            filter: blur(15px);
+            animation: pulseCore 3s infinite alternate;
+        }
+
+        @keyframes globalRotate { 100% { transform: rotateX(360deg) rotateY(180deg) rotateZ(360deg); } }
+        @keyframes pulseCore { 0% { transform: scale(1); opacity: 0.4; } 100% { transform: scale(3); opacity: 0.8; } }
 
         /* --- ANIMATIONS --- */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes revealUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        .reveal-up { animation: revealUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+        .delay-1 { animation-delay: 0.15s; }
+        .delay-2 { animation-delay: 0.3s; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* --- LAYOUT & HEADER --- */
+        header { margin-top: 100px; text-align: center; margin-bottom: 70px; position: relative; z-index: 10; }
+        h1 { 
+            font-family: 'Playfair Display', serif; font-size: 5rem; font-weight: 400;
+            margin: 0; color: var(--text); letter-spacing: -2px;
         }
-        .animate-up { animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        h1 span { color: var(--accent-red); font-style: italic; }
+        .subtitle { 
+            color: var(--gray-3); font-size: 0.75rem; margin-top: 20px; 
+            letter-spacing: 5px; text-transform: uppercase; font-weight: 500;
+        }
+        .header-line { width: 1px; height: 50px; background-color: var(--accent-red); margin: 0 auto 25px auto; }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /* Floating Glass Container */
+        .container { 
+            width: 92%; max-width: 1400px; margin: 0 auto;
+            background: var(--glass-bg); 
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255,255,255,0.6);
+            box-shadow: var(--shadow-float);
+            padding: 60px 40px 80px 40px; 
+            position: relative; z-index: 10;
         }
 
-        header { margin-top: 50px; text-align: center; margin-bottom: 40px; }
-        h1 { font-family: 'Playfair Display', serif; font-size: 3.5rem; margin: 0; color: var(--text-white); }
-        h1 span { color: var(--accent-lime-green); }
-        .subtitle { color: var(--text-gray); font-size: 0.85rem; margin-top: 8px; letter-spacing: 2px; text-transform: uppercase; }
+        /* --- NAVIGATION --- */
+        .nav { display: flex; justify-content: center; gap: 70px; margin-bottom: 70px; border-bottom: var(--border-thin); }
+        .nav a { 
+            text-decoration: none; color: var(--gray-2); padding-bottom: 25px; 
+            font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 3px; position: relative;
+        }
+        .nav a::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 0%; height: 1px; background-color: var(--text); transition: 0.5s ease; }
+        .nav a.active { color: var(--text); }
+        .nav a.active::after { width: 100%; }
+        .nav a:hover:not(.active) { color: var(--text); }
 
-        .container { width: 95%; max-width: 1200px; background: var(--ui-dark-gray); border: 1px solid var(--border-color); border-radius: 12px; padding: 40px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); }
-
-        .nav { display: flex; justify-content: center; gap: 40px; margin-bottom: 40px; border-bottom: 1px solid var(--border-color); }
-        .nav a { text-decoration: none; color: var(--text-gray); padding-bottom: 15px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid transparent; }
-        .nav a.active { color: var(--accent-lime-green); border-bottom: 2px solid var(--accent-lime-green); }
-        .nav a:hover:not(.active) { color: var(--text-white); }
-
-        /* Upload Styles */
-        .upload-wrapper { display: flex; flex-direction: column; align-items: center; gap: 20px; }
-        .upload-area { width: 100%; max-width: 600px; border: 2px dashed var(--border-color); background: rgba(255,255,255,0.01); padding: 60px; text-align: center; cursor: pointer; border-radius: 12px; transition: 0.4s ease; }
-        .upload-area:hover { border-color: var(--accent-lime-green); background: rgba(163, 255, 18, 0.03); transform: scale(1.02); }
+        /* --- UPLOAD AREA --- */
+        .upload-wrapper { display: flex; flex-direction: column; align-items: center; gap: 35px; }
+        .upload-area { 
+            width: 100%; max-width: 750px; 
+            border: 1px dashed var(--gray-2); 
+            background: rgba(255,255,255,0.5); 
+            padding: 90px 40px; text-align: center; cursor: pointer; position: relative;
+            transition: all 0.5s;
+        }
+        .upload-area::before, .upload-area::after {
+            content: ''; position: absolute; width: 25px; height: 25px; border: 1px solid var(--text); pointer-events: none; transition: 0.5s;
+        }
+        .upload-area::before { top: -6px; left: -6px; border-right: none; border-bottom: none; }
+        .upload-area::after { bottom: -6px; right: -6px; border-left: none; border-top: none; }
+        
+        .upload-area:hover { 
+            border-color: var(--accent-red); background: rgba(179, 38, 45, 0.03); 
+            transform: translateY(-5px); box-shadow: var(--shadow-float);
+        }
+        .upload-area:hover::before, .upload-area:hover::after { border-color: var(--accent-red); width: 35px; height: 35px; }
         input[type="file"] { display: none; }
-        .upload-icon { font-size: 3rem; color: var(--accent-lime-green); margin-bottom: 15px; }
+        .upload-icon { font-size: 2.5rem; color: var(--gray-2); margin-bottom: 25px; }
         
-        .btn-process { position: relative; background: var(--accent-lime-green); color: var(--bg-near-black); padding: 14px 40px; border: none; border-radius: 6px; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 200px; overflow: hidden; }
-        .btn-process:hover { background: #8DE010; box-shadow: 0 0 20px rgba(163, 255, 18, 0.4); }
+        /* --- BUTTONS --- */
+        .btn-process { 
+            position: relative; background: var(--text); color: var(--background); 
+            padding: 18px 50px; border: 1px solid var(--text); 
+            font-family: 'Inter', sans-serif; font-weight: 500; font-size: 0.75rem; 
+            text-transform: uppercase; letter-spacing: 2px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; min-width: 260px; 
+            overflow: hidden;
+        }
+        /* Button shine effect */
+        .btn-process::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+        .btn-process:hover::after { left: 100%; }
+        .btn-process:hover { background: var(--accent-red); border-color: var(--accent-red); color: white; transform: translateY(-2px); box-shadow: 0 15px 30px rgba(179, 38, 45, 0.15); }
         
-        .loader { border: 3px solid rgba(0,0,0,0.1); border-top: 3px solid var(--bg-near-black); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
+        .loader { border: 2px solid rgba(255,255,255,0.2); border-top: 2px solid var(--background); border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; display: none; }
 
-        /* Comparison Grid - NOW 3 COLUMNS */
-        .comparison-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 40px; }
-        .img-card { background: #111; padding: 20px; border: 1px solid var(--border-color); text-align: center; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; }
-        .img-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(0,0,0,0.5); }
-        .img-card h3 { margin: 0 0 15px 0; font-size: 0.85rem; color: var(--text-gray); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .img-card img { width: 100%; height: auto; display: block; border-radius: 6px; object-fit: contain; background: #050505; }
+        /* --- COMPARISON GRID (3 COLUMNS) --- */
+        .comparison-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 70px; }
+        .img-card { 
+            background: rgba(255,255,255,0.6); 
+            padding: 0; border: 1px solid rgba(255,255,255,0.8);
+            position: relative; display: flex; flex-direction: column; justify-content: space-between; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.02);
+        }
+        .img-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-hover); }
         
-        /* Themed Cards */
-        .card-cv2:hover { border-color: var(--accent-blue); box-shadow: 0 15px 30px rgba(77, 168, 218, 0.15); }
-        .card-dl:hover { border-color: var(--accent-lime-green); box-shadow: 0 15px 30px rgba(163, 255, 18, 0.15); }
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: var(--border-thin); padding: 20px; background: rgba(255,255,255,0.9);
+        }
+        .img-card h3 { margin: 0; font-size: 0.7rem; color: var(--gray-3); text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+        .tech-badge { font-size: 0.55rem; padding: 4px 10px; border: 1px solid var(--gray-1); color: var(--gray-2); letter-spacing: 1.5px; }
+        
+        .img-wrapper { position: relative; padding: 20px; background: var(--surface); }
+        .img-card img { width: 100%; height: auto; display: block; object-fit: contain; filter: grayscale(15%); transition: 0.8s; box-shadow: 0 10px 20px rgba(0,0,0,0.05);}
+        .img-card:hover img { filter: grayscale(0%); transform: scale(1.02); }
+        
+        .btn-group { padding: 20px; background: rgba(255,255,255,0.9); border-top: var(--border-thin);}
+        .download-btn { 
+            background: transparent; border: 1px solid var(--gray-1); padding: 14px 20px; 
+            cursor: pointer; font-size: 0.7rem; font-weight: 500; text-transform: uppercase; 
+            display: inline-flex; align-items: center; gap: 10px; text-decoration: none; width: 100%; justify-content: center; 
+            color: var(--text); letter-spacing: 1px; transition: all 0.3s;
+        }
+        
+        .btn-dl-cv2:hover { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(216, 182, 74, 0.05);}
+        .btn-dl-torch:hover { border-color: var(--accent-red); color: var(--accent-red); background: rgba(179, 38, 45, 0.05);}
 
-        .btn-group { margin-top: 20px; }
-        .download-btn { background: transparent; border: 1px solid; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; width: 100%; justify-content: center; }
-        
-        .btn-dl-cv2 { color: var(--accent-blue); border-color: var(--accent-blue); }
-        .btn-dl-cv2:hover { background: var(--accent-blue); color: #fff; }
-        
-        .btn-dl-torch { color: var(--accent-lime-green); border-color: var(--accent-lime-green); }
-        .btn-dl-torch:hover { background: var(--accent-lime-green); color: var(--bg-near-black); }
-
-        /* Video Styles - NOW 3 COLUMNS */
+        /* --- VIDEO STYLES --- */
         .video-wrapper { text-align: center; }
-        .video-controls { margin-bottom: 30px; display: flex; justify-content: center; gap: 15px; }
-        .video-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .video-box { background: #050505; border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; position: relative; min-height: 250px; display: flex; align-items: center; justify-content: center; padding: 5px;}
-        .video-box video, .video-box img { width: 100%; height: auto; border-radius: 6px; }
-        .video-label { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); color: white; padding: 6px 12px; font-size: 0.7rem; font-weight: 600; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; z-index: 10; border: 1px solid rgba(255,255,255,0.1); }
+        .video-controls { margin-bottom: 60px; display: flex; justify-content: center; gap: 25px; }
+        .video-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 35px; }
+        .video-box { 
+            background: var(--surface); border: 1px solid rgba(255,255,255,0.5); position: relative; min-height: 280px; 
+            display: flex; align-items: center; justify-content: center; padding: 15px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.02);
+        }
+        .video-box video, .video-box img { width: 100%; height: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .video-label { 
+            position: absolute; top: -12px; left: 25px; background: var(--text); color: var(--background); 
+            padding: 6px 14px; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; 
+            z-index: 10; 
+        }
+
+        /* --- FLASH MESSAGES --- */
+        .flash { background: rgba(255,255,255,0.8); color: var(--accent-red); padding: 18px; margin-bottom: 35px; border-left: 3px solid var(--accent-red); text-align: left; font-size: 0.8rem; letter-spacing: 1px; backdrop-filter: blur(10px); }
+
+        /* --- REFINED PREMIUM FOOTER --- */
+        .premium-footer {
+            margin-top: 100px; padding: 60px 40px;
+            border-top: var(--border-thin);
+            background: rgba(252, 252, 252, 0.8);
+            backdrop-filter: blur(10px);
+            position: relative; width: 100%; z-index: 10;
+        }
         
-        /* Flash messages */
-        .flash { background: rgba(255,50,50,0.1); color: #ff5555; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #ff5555; text-align: center; }
+        .footer-content {
+            max-width: 1400px; margin: 0 auto;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .footer-links { display: flex; gap: 25px; }
+        .footer-links a {
+            color: var(--gray-3); font-size: 1.1rem; text-decoration: none;
+            width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;
+            border: 1px solid var(--gray-1); border-radius: 50%; background: transparent;
+        }
+        .footer-links a:hover { color: var(--background); background: var(--text); border-color: var(--text); transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        
+        .footer-bottom { text-align: right; }
+        .footer-status {
+            display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+            font-size: 0.65rem; color: var(--text); font-weight: 600; letter-spacing: 3px; margin-bottom: 12px;
+        }
+        .status-dot {
+            width: 6px; height: 6px; background-color: var(--accent-red); border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .copyright { font-size: 0.65rem; color: var(--gray-2); letter-spacing: 1px; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(179, 38, 45, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(179, 38, 45, 0); } 100% { box-shadow: 0 0 0 0 rgba(179, 38, 45, 0); } }
 
         @media (max-width: 992px) { 
             .comparison-grid, .video-grid { grid-template-columns: 1fr; } 
-            h1 { font-size: 2.5rem; }
+            h1 { font-size: 3.5rem; }
+            .scene-3d { display: none; } /* Hide heavy 3D on mobile */
+            .footer-content { flex-direction: column; gap: 40px; text-align: center; }
+            .footer-bottom { text-align: center; }
+            .footer-status { justify-content: center; }
         }
     </style>
 </head>
-<body class="animate-up">
+<body>
 
-    <header>
-        <h1>Lumi<span>na</span></h1>
-        <div class="subtitle">Multi-Engine Low Light Enhancement</div>
+    <div class="grid-floor"></div>
+    <div class="scene-3d">
+        <div class="gyro-wrapper">
+            <div class="gyro-ring ring-x"></div>
+            <div class="gyro-ring ring-y"></div>
+            <div class="gyro-ring ring-z"></div>
+            <div class="core-light"></div>
+        </div>
+    </div>
+
+    <header class="reveal-up">
+        
+        <h1>LUMI<span>NA</span></h1>
+        <div class="subtitle">Low Light Image Enhancer</div>
     </header>
 
-    <div class="container animate-up">
+    <div class="container reveal-up delay-1">
         
         <div class="nav">
-            <a href="/?mode=image" class="{{ 'active' if mode == 'image' else '' }}">Image Processing</a>
-            <a href="/?mode=video" class="{{ 'active' if mode == 'video' else '' }}">Live Feed</a>
+            <a href="/?mode=image" class="{{ 'active' if mode == 'image' else '' }}">Static Analysis</a>
+            <a href="/?mode=video" class="{{ 'active' if mode == 'video' else '' }}">Real-Time Vision</a>
         </div>
 
         {% with messages = get_flashed_messages() %}
@@ -130,42 +312,57 @@
         {% if mode == 'image' %}
             <form action="/upload" method="post" enctype="multipart/form-data" onsubmit="showLoading()">
                 <div class="upload-wrapper">
-                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-area reveal-up delay-2" onclick="document.getElementById('fileInput').click()">
                         <input type="file" name="file" id="fileInput" accept="image/*" required onchange="showFileName()">
-                        <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
-                        <p id="fileNameText" style="color: var(--text-gray); font-size: 1.1rem;">Click or Drag to Upload Image</p>
+                        <div class="upload-icon"><i class="fas fa-layer-group"></i></div>
+                        <p id="fileNameText" style="color: var(--gray-3); font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 500;">Select or Drop Matrix Data</p>
                     </div>
-                    <button type="submit" class="btn-process" id="processBtn">
-                        <span id="btnText">Enhance Engine</span>
+                    <button type="submit" class="btn-process reveal-up delay-2" id="processBtn">
+                        <span id="btnText">Initialize Sequence</span>
                         <div class="loader" id="btnLoader"></div>
                     </button>
                 </div>
             </form>
 
             {% if original_img and cv2_img and dl_img %}
-            <div class="comparison-grid animate-up">
+            <div class="comparison-grid reveal-up delay-1">
                 
                 <div class="img-card">
-                    <h3><i class="far fa-image"></i> Original Source</h3>
-                    <img src="data:image/jpeg;base64,{{ original_img }}" alt="Original">
+                    <div class="card-header">
+                        <h3>Source Image</h3>
+                        <span class="tech-badge">RAW INPUT</span>
+                    </div>
+                    <div class="img-wrapper">
+                        <img src="data:image/jpeg;base64,{{ original_img }}" alt="Original">
+                    </div>
                     <div class="btn-group">
-                        <div style="padding: 10px; color: transparent;">-</div>
+                        <div style="padding: 14px; color: transparent; border: 1px solid transparent;">-</div>
                     </div>
                 </div>
 
-                <div class="img-card card-cv2" style="border-top: 3px solid var(--accent-blue);">
-                    <h3 style="color: var(--accent-blue);"><i class="fas fa-sliders-h"></i> OpenCV (Histogram)</h3>
-                    <img id="cv2Image" src="data:image/jpeg;base64,{{ cv2_img }}" alt="OpenCV Enhanced">
+                <div class="img-card">
+                    <div class="card-header">
+                        <h3 style="color: var(--accent-gold);">OpenCV Output</h3>
+                        <span class="tech-badge">HISTOGRAM EQ</span>
+                    </div>
+                    <div class="img-wrapper">
+                        <img id="cv2Image" src="data:image/jpeg;base64,{{ cv2_img }}" alt="OpenCV Enhanced">
+                    </div>
                     <div class="btn-group">
-                        <a href="#" onclick="downloadImage('cv2Image', 'Lumina_OpenCV.jpg')" class="download-btn btn-dl-cv2">Download CV2 <i class="fas fa-download"></i></a>
+                        <a href="#" onclick="downloadImage('cv2Image', 'Lumina_OpenCV.jpg')" class="download-btn btn-dl-cv2">Extract Render <i class="fas fa-arrow-down"></i></a>
                     </div>
                 </div>
 
-                <div class="img-card card-dl" style="border-top: 3px solid var(--accent-lime-green);">
-                    <h3 style="color: var(--accent-lime-green);"><i class="fas fa-brain"></i> PyTorch (U-Net)</h3>
-                    <img id="dlImage" src="data:image/jpeg;base64,{{ dl_img }}" alt="PyTorch Enhanced">
+                <div class="img-card">
+                    <div class="card-header">
+                        <h3 style="color: var(--accent-red);">PyTorch Output</h3>
+                        <span class="tech-badge">U-NET AI</span>
+                    </div>
+                    <div class="img-wrapper">
+                        <img id="dlImage" src="data:image/jpeg;base64,{{ dl_img }}" alt="PyTorch Enhanced">
+                    </div>
                     <div class="btn-group">
-                        <a href="#" onclick="downloadImage('dlImage', 'Lumina_AI.jpg')" class="download-btn btn-dl-torch">Download AI <i class="fas fa-download"></i></a>
+                        <a href="#" onclick="downloadImage('dlImage', 'Lumina_AI.jpg')" class="download-btn btn-dl-torch">Extract Render <i class="fas fa-arrow-down"></i></a>
                     </div>
                 </div>
 
@@ -175,27 +372,27 @@
 
         {% if mode == 'video' %}
             <div class="video-wrapper">
-                <div class="video-controls">
-                    <button class="btn-process" id="startBtn" onclick="startCamera()"><i class="fas fa-video" style="margin-right: 8px;"></i> Start Camera</button>
-                    <button class="btn-process" id="aiBtn" onclick="toggleAI()" style="background: var(--ui-dark-gray); color: var(--text-white); border: 1px solid var(--border-color); display: none;"><i class="fas fa-bolt" style="margin-right: 8px;"></i> Start Multi-Engine</button>
+                <div class="video-controls reveal-up delay-1">
+                    <button class="btn-process" id="startBtn" onclick="startCamera()">Engage Optics</button>
+                    <button class="btn-process" id="aiBtn" onclick="toggleAI()" style="background: transparent; color: var(--text); display: none;">Run Diagnostics</button>
                 </div>
 
-                <div class="video-grid animate-up" style="display: none;" id="vidGrid">
+                <div class="video-grid reveal-up delay-2" style="display: none;" id="vidGrid">
                     <div class="video-box">
-                        <div class="video-label">Original</div>
+                        <div class="video-label">Sensor Raw</div>
                         <video id="webcam" autoplay playsinline muted></video>
                     </div>
                     
-                    <div class="video-box card-cv2" style="border-color: var(--accent-blue);">
-                        <div class="video-label" style="color: var(--accent-blue); border-color: var(--accent-blue);">OpenCV</div>
+                    <div class="video-box">
+                        <div class="video-label" style="background: var(--accent-gold); color: white;">CV2 Filter</div>
                         <img id="cv2Output" src="" style="display: none;">
-                        <p class="wait-text" style="color: var(--text-gray);"><i class="fas fa-circle-notch fa-spin"></i></p>
+                        <p class="wait-text" style="color: var(--gray-2); font-size: 0.8rem; letter-spacing: 2px;">STANDBY</p>
                     </div>
 
-                    <div class="video-box card-dl" style="border-color: var(--accent-lime-green);">
-                        <div class="video-label" style="color: var(--accent-lime-green); border-color: var(--accent-lime-green);">AI U-Net</div>
+                    <div class="video-box">
+                        <div class="video-label" style="background: var(--accent-red); color: white;">Neural Net</div>
                         <img id="dlOutput" src="" style="display: none;">
-                        <p class="wait-text" style="color: var(--text-gray);"><i class="fas fa-circle-notch fa-spin"></i></p>
+                        <p class="wait-text" style="color: var(--gray-2); font-size: 0.8rem; letter-spacing: 2px;">STANDBY</p>
                     </div>
                 </div>
                 
@@ -205,8 +402,24 @@
 
     </div>
 
-    <footer style="margin-top: 50px; color: var(--text-gray); font-size: 0.8rem; letter-spacing: 1px;">
-        Designed & Developed by Jeet Bhardwaj
+    <footer class="premium-footer">
+        <div class="footer-content reveal-up">
+            <div class="footer-links">
+                <a href="https://github.com/GitHub-JeetBhardwaj" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                <a href="https://linkedin.com/in/thejeetbhardwaj" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                <a href="https://huggingface.co/TheJeetBhardwaj" target="_blank" aria-label="HuggingFace"><i class="fas fa-cube"></i></a>
+                <a href="https://leetcode.com/u/Jeet_Bhardwaj_07/" target="_blank" aria-label="LeetCode"><i class="fas fa-code"></i></a>
+                <a href="mailto:thejeetbhardwaj@gmail.com" aria-label="Email"><i class="fas fa-envelope"></i></a>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="footer-status">
+                    <div class="status-dot"></div>
+                    SYSTEM ONLINE // GWALIOR, INDIA
+                </div>
+                <div class="copyright">&copy; 2026 JEET BHARDWAJ. ALL RIGHTS RESERVED.</div>
+            </div>
+        </div>
     </footer>
 
     <script>
@@ -215,19 +428,19 @@
             const input = document.getElementById('fileInput');
             const text = document.getElementById('fileNameText');
             if(input.files && input.files[0]) {
-                text.innerHTML = `<i class="fas fa-file-image"></i> ${input.files[0].name}`;
-                text.style.color = "var(--text-white)";
+                text.innerHTML = `DATA ACQUIRED: ${input.files[0].name}`;
+                text.style.color = "var(--text)";
             }
         }
 
         function showLoading() {
             document.getElementById('btnText').style.display = 'none';
             document.getElementById('btnLoader').style.display = 'block';
-            document.getElementById('processBtn').style.pointerEvents = 'none'; // Prevent double clicks
+            document.getElementById('processBtn').style.pointerEvents = 'none';
         }
 
         function downloadImage(imgId, filename) {
-            event.preventDefault(); // Stop page jump
+            event.preventDefault();
             const img = document.getElementById(imgId);
             const link = document.createElement('a');
             link.href = img.src;
@@ -251,9 +464,9 @@
                 video.srcObject = stream;
                 document.getElementById('startBtn').style.display = 'none';
                 document.getElementById('aiBtn').style.display = 'inline-flex';
-                document.getElementById('vidGrid').style.display = 'grid'; // Show grid
+                document.getElementById('vidGrid').style.display = 'grid'; 
             } catch (err) {
-                alert("Error accessing webcam: Please ensure camera permissions are granted.");
+                alert("Optical failure: Camera permission denied or device unavailable.");
             }
         }
 
@@ -263,10 +476,10 @@
             const waitTexts = document.querySelectorAll('.wait-text');
 
             if (aiEnabled) {
-                btn.innerHTML = `<i class="fas fa-stop"></i> Stop Processing`;
-                btn.style.background = "var(--accent-lime-green)";
-                btn.style.color = "var(--bg-near-black)";
-                btn.style.borderColor = "var(--accent-lime-green)";
+                btn.innerHTML = `Halt Sequence`;
+                btn.style.background = "var(--accent-red)";
+                btn.style.color = "white";
+                btn.style.borderColor = "var(--accent-red)";
                 
                 cv2Output.style.display = 'block';
                 dlOutput.style.display = 'block';
@@ -274,10 +487,10 @@
                 
                 processFrame();
             } else {
-                btn.innerHTML = `<i class="fas fa-bolt"></i> Start Multi-Engine`;
-                btn.style.background = "var(--ui-dark-gray)";
-                btn.style.color = "var(--text-white)";
-                btn.style.borderColor = "var(--border-color)";
+                btn.innerHTML = `Run Diagnostics`;
+                btn.style.background = "transparent";
+                btn.style.color = "var(--text)";
+                btn.style.borderColor = "var(--text)";
             }
         }
 
@@ -305,7 +518,6 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Update BOTH target images
                     cv2Output.src = data.cv2_image;
                     dlOutput.src = data.dl_image;
                 }
